@@ -1,0 +1,5 @@
+img-raw/*.jpg
+img-raw/*.png
+*__pycache__*
+.vscode
+*.ipynb_checkpoints
