@@ -9,6 +9,7 @@ import tensorflow.contrib.eager as tfe
 
 from model import get_model, get_features_forward_pass, get_style_features_from_model_output, get_content_features_from_model_output, get_overall_loss
 from utils import gram_matrix, load_and_process_img, deprocess_img, save_image
+from misc import create_training_gif
 
 print('Using tensorflow', tf.__version__)
 
@@ -18,14 +19,14 @@ print("Eager execution: {}".format(tf.executing_eagerly()))
 
 if __name__ == '__main__':
 
-    content_image_path = 'img-raw/content1.png'
-    style_image_path = 'img-raw/style1.png'
+    content_image_path = 'img-raw/content2.png'
+    style_image_path = 'img-raw/style4.jpg'
     training_base_path = "results"
-    loss_weights = (1e-2, 1e3)
-    n_iterations = 100
-    learning_rate = 1e-2
+    loss_weights = (5e-3, 5e3)
+    n_iterations = 1000
+    learning_rate = 8
     epochs_early_stopping = 10
-    save_each_epoch = 5
+    save_each_epoch = 10
 
     # create a training directory
     dt_str = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -59,6 +60,10 @@ if __name__ == '__main__':
 
     loss_history = {"L": list(), "L_style": list(), "L_content": list()}
 
+    norm_means = np.array([103.939, 116.779, 123.68])
+    min_vals = -1*norm_means
+    max_vals = 255 - norm_means 
+
     for i in range(n_iterations):
 
         with tf.GradientTape() as tape:
@@ -80,10 +85,16 @@ if __name__ == '__main__':
             print('Stopped training after %d iters.'%(i))
             break
 
-        if i%save_each_epoch:
+        if i%save_each_epoch == 0:
             save_image(deprocess_img(X.numpy()), os.path.join(training_path, "img/iter_%05d.png"%i))
 
         print('iter %05d: L=%.2E, L_style=%.2E, L_content=%.2E'%(i, L.numpy(), L_style.numpy(), L_content.numpy()))
         
-        dL_dX = tape.gradient(L, [X])
-        opt.apply_gradients((X, dL_dX[0]), global_step=tf.train.get_or_create_global_step())
+        dL_dX = tape.gradient(L, X)
+        opt.apply_gradients([(dL_dX, X)], global_step=tf.train.get_or_create_global_step())
+
+        # in order to prevent large image values
+        clipped = tf.clip_by_value(X, min_vals, max_vals)
+        X.assign(clipped)
+
+    create_training_gif(os.path.join(training_path, "training.gif"), content_image_path, style_image_path, os.path.join(training_path, "img"))
