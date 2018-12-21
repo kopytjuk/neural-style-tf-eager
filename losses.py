@@ -1,4 +1,5 @@
 import tensorflow as tf
+from utils import gram_matrix
 
 
 def get_content_loss(content_features, target_features):
@@ -10,27 +11,6 @@ def get_content_loss(content_features, target_features):
 		target_features (tf.Tensor): Tensor (layer output) given the generated image
 	"""
 	return tf.reduce_mean(tf.square(content_features - target_features))
-
-
-def gram_matrix(input_tensor):
-	"""Caculates the Gram-Matrix from a layer output (tensor).
-
-	Args:
-		input_tensor (tf.Tensor): Layer output
-	
-	Returns:
-		tf.Tensor: Gram matrix
-	"""
-
-	# We make the image channels first 
-	channels = int(input_tensor.shape[-1])
-
-	# [Wf, Hf, Cn] -> [Wf*Hf, Cn]
-	a = tf.reshape(input_tensor, [-1, channels])
-	n = tf.shape(a)[0] # Wf*Hf
-
-	gram = tf.matmul(a, a, transpose_a=True)
-	return gram / tf.cast(n, tf.float32)
 
 
 def get_style_loss(base_style, gram_target):

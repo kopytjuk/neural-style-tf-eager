@@ -48,8 +48,7 @@ def get_features_forward_pass(model, content_path, style_path):
     image_content_tensor = load_and_process_img(content_path)
     image_style_tensor = load_and_process_img(style_path)
 
-
-    model_input = tf.concat([image_style_tensor, image_content_tensor])
+    model_input = tf.concat([image_style_tensor, image_content_tensor], axis=0)
 
     # get outputs from both style and content images
     outputs_model = model(model_input)
@@ -60,17 +59,17 @@ def get_features_forward_pass(model, content_path, style_path):
     # o[0] to get the second image from batch (content image)
     content_features = get_content_features_from_model_output(outputs_model, sample_slice=1)
 
-    return style_layer_outputs, content_layer_outputs
+    return style_features, content_features
 
 
 def get_style_features_from_model_output(out, sample_slice=0):
-    return [o[sample_nr] for o in out[:num_style_layers]]
+    return [o[sample_slice] for o in out[:num_style_layers]]
 
 def get_content_features_from_model_output(out, sample_slice=0):
-    return [o[1] for o in out[num_style_layers:]]
+    return [o[sample_slice] for o in out[num_style_layers:]]
 
 
-def compute_overall_loss(model, loss_weights, init_image, gram_style_image, content_image_features):
+def get_overall_loss(model, loss_weights, init_image, style_image_gram_matrices, content_image_features):
     """Compute overall loss from single training iteration. We feed the generates image X throuth the
     model's forward pass and calculate the loss given the style features from style image and content features given
     the content image.
@@ -97,8 +96,7 @@ def compute_overall_loss(model, loss_weights, init_image, gram_style_image, cont
     # Accumulate style losses from all layers
     # Here, we equally weight each contribution of each loss layer
     for s in range(num_style_layers):
-        gen_gram_s = gram_matrix(gen_style_layers[s])
-        style_loss_s = get_style_loss(gen_gram_s, gram_style_image[s])
+        style_loss_s = get_style_loss(gen_style_layers[s], style_image_gram_matrices[s])
         style_score += weight_per_style_layer*style_loss_s
 
 

@@ -1,7 +1,28 @@
 from keras.applications.vgg19 import preprocess_input as preprocess_input_vgg19
+from tensorflow.python.keras.preprocessing import image as kp_image
 from PIL import Image
 import numpy as np
 import tensorflow as tf
+
+def gram_matrix(input_tensor):
+	"""Caculates the Gram-Matrix from a layer output (tensor).
+
+	Args:
+		input_tensor (tf.Tensor): Layer output
+	
+	Returns:
+		tf.Tensor: Gram matrix
+	"""
+
+	# We make the image channels first 
+	channels = int(input_tensor.shape[-1])
+
+	# [Wf, Hf, Cn] -> [Wf*Hf, Cn]
+	a = tf.reshape(input_tensor, [-1, channels])
+	n = tf.shape(a)[0] # Wf*Hf
+
+	gram = tf.matmul(a, a, transpose_a=True)
+	return gram / tf.cast(n, tf.float32)
 
 def load_img(path_to_img):
     max_dim = 512
@@ -18,8 +39,13 @@ def load_img(path_to_img):
 
 def load_and_process_img(path_to_img):
     img = load_img(path_to_img)
-    img = tf.keras.applications.vgg19.preprocess_input_vgg19(img)
+    img = preprocess_input_vgg19(img)
     return img
+
+
+def save_image(img_arr, path):
+    img = Image.fromarray(img_arr)
+    img.save(path)
 
 
 def deprocess_img(processed_img):
